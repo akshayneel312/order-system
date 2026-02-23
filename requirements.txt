@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+sqlalchemy
+asyncpg
+aiokafka
+pydantic
+pydantic-settings
+pyjwt
+passlib[bcrypt]
+bcrypt==3.2.2
+python-multipart
+pytest
+httpx
+pytest-asyncio

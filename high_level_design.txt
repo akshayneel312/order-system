@@ -1,0 +1,57 @@
+                      [ Users / Load Tester ]
+                                 │
+                                 │ HTTP / REST (JWT Auth)
+                                 ▼
+                    ┌──────────────────────────┐
+                    │      AWS EC2 Server      │
+                    │   (Security Group: 80)   │
+                    └────────────┬─────────────┘
+                                 │
+                                 ▼
+                     ┌───────────────────────┐
+                     │ Nginx (Reverse Proxy) │
+                     └──────┬─────────┬──────┘
+             Round Robin    │         │    Load Balancing
+             ┌──────────────┘         └──────────────┐
+             ▼                                       ▼
+  ┌───────────────────┐                     ┌───────────────────┐
+  │ FastAPI (Node 1)  │ ◀ ─ ─ (Scales)─ ─ ─ │ FastAPI (Node N)  │
+  ├───────────────────┤      dynamically    ├───────────────────┤
+  │ 1. Verify JWT     │                     │ 1. Verify JWT     │
+  │ 2. Save "PENDING" │──┐               ┌──│ 2. Save "PENDING" │
+  │ 3. Return 200 OK  │  │               │  │ 3. Return 200 OK  │
+  └───────────────────┘  │               │  └───────────────────┘
+                         │               │
+      (Writes Order)     │               │     (Publishes Event)
+                         ▼               ▼
+                   ┌───────────────────────────┐
+                   │ PostgreSQL (Database)     │
+                   │ - users table             │
+                   │ - orders table            │
+                   └─────────────▲─────────────┘
+                                 │
+                            (Updates Status)
+                                 │
+  ┌───────────────────┐          │          ┌───────────────────┐
+  │ Worker (Node 1)   │──────────┘          │ Worker (Node N)   │
+  ├───────────────────┤                     ├───────────────────┤
+  │ Pulls from Kafka  │                     │ Pulls from Kafka  │
+  │ Executes Logic    │◀ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│ Executes Logic    │
+  └─────────▲─────────┘                     └─────────▲─────────┘
+            │                                         │
+            │           (Subscribes to Topic)         │
+            └────────────────────┬────────────────────┘
+                                 │
+                                 ▼
+                    ┌──────────────────────────┐
+                    │      Apache Kafka        │
+                    │  Topic: orders_topic     │
+                    │  (10 Fixed Partitions)   │
+                    └────────────▲─────────────┘
+                                 │
+                                 │ (Monitors Lag > 10)
+                                 │
+                    ┌──────────────────────────┐
+                    │ Custom Python Autoscaler │
+                    │ (Executes docker scale)  │
+                    └──────────────────────────┘
